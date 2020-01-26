@@ -38,20 +38,4 @@ class TrioTest extends FunSuite with Matchers {
     count shouldBe 4
     never shouldBe 0
   }
-
-  // it should "blah" in {
-  //   val io = for {
-  //     a <- IO.async { (cb: Either[Throwable, Int] => Unit) =>
-  //           Future(5).onComplete {
-  //             case Success(v) => cb(Right(5))
-  //             case Failure(t) => cb(Left(t))
-  //           }
-  //         }
-  //     b <- IO.pure(2)
-  //   } yield {
-  //     (a + b)
-  //   }
-
-  //   io.unsafeRunAsync()
-  // }
 }
