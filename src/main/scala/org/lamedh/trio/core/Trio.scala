@@ -19,19 +19,6 @@ object Trio {
     def unsafeRunAsync(cb: Either[Throwable, A] => Unit): Unit = IO.unsafeRunAsync(this, cb)
   }
 
-  trait Handler {
-    def isError: Boolean
-  }
-
-  object Handler {
-    final case class Happy(f: Any => IO[Any]) extends Handler {
-      override def isError: Boolean = false
-    }
-    final case class Error(f: Throwable => IO[Any]) extends Handler {
-      override def isError: Boolean = true
-    }
-  }
-
   final case class Map[A, B](io: IO[A], f: A => B)                         extends IO[B]
   final case class Bind[A, B](io: IO[A], f: A => IO[B])                    extends IO[B]
   final case class Pure[A](a: A)                                           extends IO[A]

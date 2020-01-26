@@ -5,16 +5,28 @@ import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 import org.lamedh.trio.core.Trio.IO
-import Trio.Handler
 
 private object IORunLoop {
 
-  import Handler._
   import Trio._
   import IO._
+  import Handler._
 
   def startSync[A](io: IO[A]): A                                       = loop(io, Nil)
   def startAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = loop(io, Nil, cb)
+
+  trait Handler {
+    def isError: Boolean
+  }
+
+  object Handler {
+    final case class Happy(f: Any => IO[Any]) extends Handler {
+      override def isError: Boolean = false
+    }
+    final case class Error(f: Throwable => IO[Any]) extends Handler {
+      override def isError: Boolean = true
+    }
+  }
 
   @tailrec
   private def loop[A](current: IO[Any], stack: List[Handler]): A =
