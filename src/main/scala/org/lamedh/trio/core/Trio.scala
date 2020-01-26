@@ -1,6 +1,10 @@
 package org.lamedh.trio.core
 
 import scala.util.control.NonFatal
+import scala.annotation.tailrec
+import scala.util.Try
+import scala.util.Success
+import scala.util.Failure
 
 object Trio {
 
@@ -11,7 +15,8 @@ object Trio {
     def handleError[B](h: Throwable => B): IO[B]         = IO.handleErrorWith(this, h andThen IO.pure)
     def handleErrorWith[B](h: Throwable => IO[B]): IO[B] = IO.handleErrorWith(this, h)
 
-    def unsafeRunSync(): A = IO.unsafeRunSync(this)
+    def unsafeRunSync(): Unit = IO.unsafeRunSync(this)
+    def unsafeRunAsync(cb: Either[Throwable, A] => Unit): Unit = IO.unsafeRunAsync(this, cb)
   }
 
   trait Handler {
@@ -27,51 +32,25 @@ object Trio {
     }
   }
 
-  final case class Map[A, B](io: IO[A], f: A => B) extends IO[B]
-  final case class Bind[A, B](io: IO[A], f: A => IO[B]) extends IO[B]
-  final case class Pure[A](a: A) extends IO[A]
-  final case class Delay[A](thunk: () => A) extends IO[A]
+  final case class Map[A, B](io: IO[A], f: A => B)                         extends IO[B]
+  final case class Bind[A, B](io: IO[A], f: A => IO[B])                    extends IO[B]
+  final case class Pure[A](a: A)                                           extends IO[A]
+  final case class Delay[A](thunk: () => A)                                extends IO[A]
   final case class HandleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
-  final case class RaiseError[T <: Throwable](t: T) extends IO[T]
+  final case class RaiseError[T <: Throwable](t: T)                        extends IO[Nothing]
+  final case class Async[A](k: (Either[Throwable, A] => Unit) => Unit)     extends IO[A]
 
   object IO {
+
+    def apply[A](a: => A)                                       = delay(a)
 
     def delay[A](thunk: => A)                                   = Delay(() => thunk)
     def pure[A](a: A)                                           = Pure(a)
     def raise[T <: Throwable](t: T)                             = RaiseError(t)
     def handleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErrorWith(io, h)
+    def async[A](k: (Either[Throwable, A] => Unit) => Unit)     = Async(k)
 
-    def apply[A](a: => A) = delay(a)
-
-    def unsafeRunSync[A](io: IO[A]): A = {
-      import Handler._
-      def loop(current: IO[Any], stack: List[Handler]): A =
-        current match {
-          case Map(io, f)             => loop(io, Happy(f andThen pure) :: stack)
-          case Bind(io, f)            => loop(io, Happy(f) :: stack)
-          case HandleErrorWith(io, h) => loop(io, Error(h) :: stack)
-          case Delay(thunk) => {
-            try {
-              val value = thunk()
-              loop(pure(value), stack)
-            } catch {
-              case NonFatal(t) => loop(raise(t), stack)
-            }
-          }
-          case Pure(any) =>
-            stack.dropWhile(_.isError) match {
-              case Nil              => any.asInstanceOf[A]
-              case Happy(f) :: tail => loop(f(any), tail)
-              case _                => throw new Exception("Unexpected Error handler")
-            }
-          case RaiseError(t) =>
-            stack.dropWhile(!_.isError) match {
-              case Nil              => throw t
-              case Error(h) :: tail => loop(h(t), tail)
-              case _                => throw new Exception("Unexpected happy handler")
-            }
-        }
-      loop(io, Nil)
-    }
+    def unsafeRunSync[A](io: IO[A]): Unit                                    = IORunLoop.startSync(io)
+    def unsafeRunAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(io, cb)
   }
 }
