@@ -1,19 +1,20 @@
-package org.lamedh.trio.core
+package org.lamedh.z2io.core
 
 import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
-import org.lamedh.trio.core.Trio.IO
+import org.lamedh.z2io.core.Z2IO.IO
+import scala.concurrent.Future
 
 private object IORunLoop {
 
-  import Trio._
+  import Z2IO._
   import IO._
   import Handler._
 
   def startSync[A](io: IO[A]): A                                       = loop(io, Nil)
-  def startAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = loop(io, Nil, cb)
+  def startAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = loopAsync(io, Nil, cb)
 
   trait Handler {
     def isError: Boolean
@@ -53,36 +54,40 @@ private object IORunLoop {
           case _                => throw new AssertionError("Unreachable code")
         }
       case Async(k) => suspendInAsync(current, k, stack.tail)
-   }
+    }
 
-  private def suspendInAsync[A](io: IO[A], k: (Either[Throwable, A] => Unit) => Unit, stack: List[Handler]) = ???
+  // TODO: implement this after threadpool management and sync toolset is done
+  private def suspendInAsync[A](io: IO[A], k: (Either[Throwable, A] => Unit) => Unit, stack: List[Handler]) =
+    throw new UnsupportedOperationException("Hit async boundary in non-async operation")
 
-  private def loop[A](current: IO[Any], stack: List[Handler], cb: Either[Throwable, A] => Unit): Unit =
+  private def loopAsync[A](current: IO[Any], stack: List[Handler], cb: Either[Throwable, A] => Unit): Unit =
     current match {
-      case Map(io, f)             => loop(io, Happy(f andThen pure) :: stack, cb)
-      case Bind(io, f)            => loop(io, Happy(f) :: stack, cb)
-      case HandleErrorWith(io, h) => loop(io, Error(h) :: stack, cb)
+      case Map(io, f)             => loopAsync(io, Happy(f andThen pure) :: stack, cb)
+      case Bind(io, f)            => loopAsync(io, Happy(f) :: stack, cb)
+      case HandleErrorWith(io, h) => loopAsync(io, Error(h) :: stack, cb)
       case Delay(thunk) => {
         Try(thunk()) match {
-          case Success(v) => loop(pure(v), stack, cb)
-          case Failure(t) => loop(raise(t), stack, cb)
+          case Success(v)                  => loopAsync(pure(v), stack, cb)
+          case Failure(t) if stack.isEmpty => cb(Left(t))
+          case Failure(t)                  => loopAsync(raise(t), stack, cb)
         }
       }
       case Pure(any) =>
         stack.dropWhile(_.isError) match {
           case Nil              => cb(Right(any.asInstanceOf[A]))
-          case Happy(f) :: tail => loop(f(any), tail, cb)
+          case Happy(f) :: tail => loopAsync(f(any), tail, cb)
           case _                => throw new AssertionError("Unreachable code")
         }
       case RaiseError(t) =>
         stack.dropWhile(!_.isError) match {
           case Nil              => throw t
-          case Error(h) :: tail => loop(h(t), tail, cb)
+          case Error(h) :: tail => loopAsync(h(t), tail, cb)
           case _                => throw new AssertionError("Unreachable code")
         }
       case Async(k) =>
         val rest = { res: Either[Throwable, Any] =>
-          loop(res.fold(raise, pure), stack, cb)
+          println("damn\n\n" + res)
+          loopAsync(res.fold(raise, pure), stack, cb)
         }
         k(rest)
     }
