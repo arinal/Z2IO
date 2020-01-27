@@ -26,7 +26,7 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
       _ <- IO(throw new Exception("Boom")).handleError(_ => must4 += 1) // count: 3, never: 0
       _ <- IO.raise(new Exception("Boom"))
       _ <- IO(never += 1) // count: 3, never: 0
-    } yield IO(must4 -> never)
+    } yield (must4, never)
     io.handleError(_ => must4 += 1) *> IO(must4 -> never)
   }
 
