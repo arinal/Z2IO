@@ -10,25 +10,9 @@ import scala.util.Failure
 import org.scalatest.FunSuite
 import org.scalatest.AsyncFunSuite
 
-class Z2ioTest extends AsyncFunSuite with Matchers {
+class Z2ioTest extends FunSuite with Matchers {
 
-  val for_2_IO = for {
-    a0 <- IO(0)
-    a1 <- IO(a0 + 1)
-    a2 <- IO(a1 + 1)
-  } yield a2
-
-  def handler_4_0_IO = {
-    var (must4, never) = (0, 0)
-    val io = for {
-      _ <- IO(must4 += 1).handleError(_ => never += 1) // count: 1, never: 0
-      _ <- IO(must4 += 1).handleError(_ => never += 1) // count: 2, never: 0
-      _ <- IO(throw new Exception("Boom")).handleError(_ => must4 += 1) // count: 3, never: 0
-      _ <- IO.raise(new Exception("Boom"))
-      _ <- IO(never += 1) // count: 3, never: 0
-    } yield (must4, never)
-    io.handleError(_ => must4 += 1) *> IO(must4 -> never)
-  }
+  import Z2ioTest._
 
   test("for comprehension") {
     for_2_IO.unsafeRunSync() shouldBe 2
@@ -72,6 +56,30 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
         case Right(_5) => output = _5
         case _         =>
       }
+    Thread.sleep(1)
     output shouldBe 5
+  }
+}
+
+object Z2ioTest {
+
+  implicit val ec =  scala.concurrent.ExecutionContext.Implicits.global
+
+  val for_2_IO = for {
+    a0 <- IO(0)
+    a1 <- IO(a0 + 1)
+    a2 <- IO(a1 + 1)
+  } yield a2
+
+  def handler_4_0_IO = {
+    var (must4, never) = (0, 0)
+    val io = for {
+      _ <- IO(must4 += 1).handleError(_ => never += 1) // must4: 1, never: 0
+      _ <- IO(must4 += 1).handleError(_ => never += 1) // must4: 2, never: 0
+      _ <- IO(throw new Exception("Boom")).handleError(_ => must4 += 1) // must4: 3, never: 0
+      _ <- IO.raise(new Exception("Boom"))
+      _ <- IO(never += 1) // must4: 3, never: 0
+    } yield (must4, never)
+    io.handleError(_ => must4 += 1 /* must4: 4, never: 0 */)  *> IO(must4 -> never)
   }
 }

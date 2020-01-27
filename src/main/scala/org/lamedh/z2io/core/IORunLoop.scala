@@ -58,7 +58,7 @@ private object IORunLoop {
 
   // TODO: implement this after threadpool management and sync toolset is done
   private def suspendInAsync[A](io: IO[A], k: (Either[Throwable, A] => Unit) => Unit, stack: List[Handler]) =
-    throw new UnsupportedOperationException("Hit async boundary in non-async operation")
+    throw new UnsupportedOperationException("Hit async boundary in a non-async operation")
 
   private def loopAsync[A](current: IO[Any], stack: List[Handler], cb: Either[Throwable, A] => Unit): Unit =
     current match {
@@ -86,7 +86,6 @@ private object IORunLoop {
         }
       case Async(k) =>
         val rest = { res: Either[Throwable, Any] =>
-          println("damn\n\n" + res)
           loopAsync(res.fold(raise, pure), stack, cb)
         }
         k(rest)
