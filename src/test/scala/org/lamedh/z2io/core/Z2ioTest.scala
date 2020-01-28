@@ -22,6 +22,20 @@ class Z2ioTest extends FunSuite with Matchers {
     handler_4_0_IO.unsafeRunSync() shouldBe (4, 0)
   }
 
+  test("stack safety with trampoline") {
+    // Executing untrampolined version (with n = 500000) blows the stack
+    // def sum(n: Long) = if (n > 0) n + sum(n - 1) else 0
+    // Also note that below is how not to do trampoline:
+    // def sum(n: Long): IO[Long]
+    //   if (n == 0) IO.pure(0) else sum(n - 1).map((l: Long) => l + n)
+    // Tip: recursive call should be inside lambda
+    def sum(n: Long): IO[Long] =
+      if (n == 0) IO.pure(0)
+      else IO.pure(n).flatMap(p => sum(n - 1).map(_ + n))
+
+    sum(500000).unsafeRunSync() shouldBe 125000250000L
+  }
+
   test("async: callback is called") {
     var _2 = 0
     for_2_IO.unsafeRunAsync {
@@ -63,7 +77,7 @@ class Z2ioTest extends FunSuite with Matchers {
 
 object Z2ioTest {
 
-  implicit val ec =  scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
   val for_2_IO = for {
     a0 <- IO(0)
@@ -80,6 +94,6 @@ object Z2ioTest {
       _ <- IO.raise(new Exception("Boom"))
       _ <- IO(never += 1) // must4: 3, never: 0
     } yield (must4, never)
-    io.handleError(_ => must4 += 1 /* must4: 4, never: 0 */)  *> IO(must4 -> never)
+    io.handleError(_ => must4 += 1 /* must4: 4, never: 0 */ ) *> IO(must4 -> never)
   }
 }
