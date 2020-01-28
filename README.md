@@ -20,7 +20,7 @@ The main concepts to be discussed in this document are:
 Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like "GNU not UNIX". Z2IO is Zero to IO, as in implementing it from zero until finished with a complete I/O framework.
 
 ## Usage
-See how it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala]).
+See how it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala).
 
 
 ### Acknowledgments
