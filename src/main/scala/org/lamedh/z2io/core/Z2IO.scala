@@ -7,6 +7,7 @@ import scala.util.Success
 import scala.util.Failure
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
+import scala.concurrent.Promise
 
 object Z2IO {
 
@@ -20,8 +21,14 @@ object Z2IO {
     def handleError[B](h: Throwable => B): IO[B]         = IO.handleErrorWith(this, h andThen IO.pure)
     def handleErrorWith[B](h: Throwable => IO[B]): IO[B] = IO.handleErrorWith(this, h)
 
-    def unsafeRunSync(): A                                     = IO.unsafeRunSync(this)
-    def unsafeRunAsync(cb: Either[Throwable, A] => Unit): Unit = IO.unsafeRunAsync(this, cb)
+    def unsafeRunSync(): A                                     = IORunLoop.startSync(this)
+    def unsafeRunAsync(cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(this, cb)
+
+    def unsafeToFuture(): Future[A] = {
+      val p = Promise[A]
+      unsafeRunAsync(_.fold(p.failure, p.success))
+      p.future
+    }
   }
 
   final case class Map[A, B](io: IO[A], f: A => B)                         extends IO[B]
@@ -48,8 +55,5 @@ object Z2IO {
     def raise[T <: Throwable](t: T)                             = RaiseError(t)
     def handleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErrorWith(io, h)
     def async[A](k: (Either[Throwable, A] => Unit) => Unit)     = Async(k)
-
-    def unsafeRunSync[A](io: IO[A]): A                                       = IORunLoop.startSync(io)
-    def unsafeRunAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(io, cb)
   }
 }

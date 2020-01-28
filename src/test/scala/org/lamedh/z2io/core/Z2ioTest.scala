@@ -7,10 +7,9 @@ import org.lamedh.z2io.core.Z2IO.IO
 import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Failure
-import org.scalatest.FunSuite
 import org.scalatest.AsyncFunSuite
 
-class Z2ioTest extends FunSuite with Matchers {
+class Z2ioTest extends AsyncFunSuite with Matchers {
 
   import Z2ioTest._
 
@@ -25,7 +24,7 @@ class Z2ioTest extends FunSuite with Matchers {
   test("stack safety with trampoline") {
     // Executing untrampolined version (with n = 500000) blows the stack
     // def sum(n: Long) = if (n > 0) n + sum(n - 1) else 0
-    // Also note that below is how not to do trampoline:
+    // Also note that below is how not to do trampoline either:
     // def sum(n: Long): IO[Long]
     //   if (n == 0) IO.pure(0) else sum(n - 1).map((l: Long) => l + n)
     // Tip: recursive call should be inside lambda
@@ -63,21 +62,14 @@ class Z2ioTest extends FunSuite with Matchers {
     left shouldBe true
   }
 
-  test("async from future") {
-    var output = 0
+  test("from future and back to future") {
     IO.fromFuture(Future.successful(5))
-      .unsafeRunAsync {
-        case Right(_5) => output = _5
-        case _         =>
-      }
-    Thread.sleep(1)
-    output shouldBe 5
+      .unsafeToFuture
+      .map(_ shouldBe 5)
   }
 }
 
 object Z2ioTest {
-
-  implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
   val for_2_IO = for {
     a0 <- IO(0)
