@@ -3,11 +3,11 @@ package org.lamedh.z2io.core
 import org.scalatest.Matchers
 import org.scalatest.TestSuite
 import org.scalatest.FlatSpec
-import org.lamedh.z2io.core.Z2IO.IO
 import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Failure
 import org.scalatest.AsyncFunSuite
+import org.lamedh.z2io.core.Z2IO.IO
 
 class Z2ioTest extends AsyncFunSuite with Matchers {
 
@@ -62,7 +62,7 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
     left shouldBe true
   }
 
-  test("from future and back to future") {
+  test("from future then back to future") {
     IO.fromFuture(Future.successful(5))
       .unsafeToFuture
       .map(_ shouldBe 5)

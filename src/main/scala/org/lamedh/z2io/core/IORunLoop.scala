@@ -1,11 +1,11 @@
 package org.lamedh.z2io.core
 
-import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
-import org.lamedh.z2io.core.Z2IO.IO
 import scala.concurrent.Future
+import scala.annotation.tailrec
+import org.lamedh.z2io.core.Z2IO.IO
 
 private object IORunLoop {
 

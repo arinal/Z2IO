@@ -1,13 +1,13 @@
 package org.lamedh.z2io.core
 
 import scala.util.control.NonFatal
-import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Promise
+import scala.annotation.tailrec
 
 object Z2IO {
 
