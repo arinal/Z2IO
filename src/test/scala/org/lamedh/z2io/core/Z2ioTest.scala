@@ -1,13 +1,13 @@
 package org.lamedh.z2io.core
 
+import org.lamedh.z2io.core.Z2IO.IO
+import org.scalatest.AsyncFunSuite
+import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 import org.scalatest.TestSuite
-import org.scalatest.FlatSpec
 import scala.concurrent.Future
-import scala.util.Success
 import scala.util.Failure
-import org.scalatest.AsyncFunSuite
-import org.lamedh.z2io.core.Z2IO.IO
+import scala.util.Success
 
 class Z2ioTest extends AsyncFunSuite with Matchers {
 
@@ -22,7 +22,7 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
   }
 
   test("stack safety with trampoline") {
-    // Executing untrampolined version (with n = 500000) blows the stack
+    // Executing untrampolined version (with n = 500000) will blow the stack
     // def sum(n: Long) = if (n > 0) n + sum(n - 1) else 0
     // Also note that below is how not to do trampoline either:
     // def sum(n: Long): IO[Long]
@@ -62,7 +62,7 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
     left shouldBe true
   }
 
-  test("from future then back to future") {
+  test("from future and back to future") {
     IO.fromFuture(Future.successful(5))
       .unsafeToFuture
       .map(_ shouldBe 5)
@@ -72,10 +72,10 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
 object Z2ioTest {
 
   val for_2_IO = for {
-    a0 <- IO(0)
-    a1 <- IO(a0 + 1)
-    a2 <- IO(a1 + 1)
-  } yield a2
+    _0 <- IO(0)
+    _1 <- IO(_0 + 1)
+    _2 <- IO(_1 + 1)
+  } yield _2
 
   def handler_4_0_IO = {
     var (must4, never) = (0, 0)

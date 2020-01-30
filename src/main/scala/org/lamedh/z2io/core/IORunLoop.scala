@@ -1,11 +1,13 @@
 package org.lamedh.z2io.core
 
-import scala.util.Try
-import scala.util.Success
-import scala.util.Failure
-import scala.concurrent.Future
-import scala.annotation.tailrec
 import org.lamedh.z2io.core.Z2IO.IO
+import scala.annotation.tailrec
+import scala.concurrent.Future
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.Semaphore
 
 private object IORunLoop {
 
@@ -53,12 +55,21 @@ private object IORunLoop {
           case Error(h) :: tail => loop(h(t), tail)
           case _                => throw new AssertionError("Unreachable code")
         }
-      case Async(k) => suspendInAsync(current, k, stack.tail)
+      case Async(k) => suspendInAsync[A](current, k, stack)
     }
 
-  // TODO: implement this after threadpool management and sync toolset is done
-  private def suspendInAsync[A](io: IO[A], k: (Either[Throwable, A] => Unit) => Unit, stack: List[Handler]) =
-    throw new UnsupportedOperationException("Hit async boundary in a non-async operation")
+  private def suspendInAsync[A](io: IO[Any], k: (Either[Throwable, Any] => Unit) => Unit, stack: List[Handler]) = {
+    val sem = new Semaphore(0)
+    var ref: Either[Throwable, Any] = null
+
+    val cb = { p: Either[Throwable, Any] =>
+      ref = p
+      sem.release()
+    }
+    loopAsync(io, stack, cb)
+    sem.acquire()
+    ref.right.get.asInstanceOf[A]
+  }
 
   private def loopAsync[A](current: IO[Any], stack: List[Handler], cb: Either[Throwable, A] => Unit): Unit =
     current match {

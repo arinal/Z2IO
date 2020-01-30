@@ -1,13 +1,13 @@
 package org.lamedh.z2io.core
 
-import scala.util.control.NonFatal
-import scala.util.Try
-import scala.util.Success
-import scala.util.Failure
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Promise
 import scala.annotation.tailrec
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.concurrent.Promise
+import scala.util.control.NonFatal
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 object Z2IO {
 
@@ -43,6 +43,12 @@ object Z2IO {
 
     def apply[A](a: => A) = delay(a)
 
+    def delay[A](thunk: => A)                                   = Delay(() => thunk)
+    def pure[A](a: A)                                           = Pure(a)
+    def raise[T <: Throwable](t: T)                             = RaiseError(t)
+    def handleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErrorWith(io, h)
+    def async[A](k: (Either[Throwable, A] => Unit) => Unit)     = Async(k)
+
     def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] = async { cb =>
       fut.onComplete {
         case Success(value) => cb(Right(value))
@@ -50,10 +56,6 @@ object Z2IO {
       }
     }
 
-    def delay[A](thunk: => A)                                   = Delay(() => thunk)
-    def pure[A](a: A)                                           = Pure(a)
-    def raise[T <: Throwable](t: T)                             = RaiseError(t)
-    def handleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErrorWith(io, h)
-    def async[A](k: (Either[Throwable, A] => Unit) => Unit)     = Async(k)
+    val never: IO[Nothing] = async(_ => ())
   }
 }
