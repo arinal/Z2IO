@@ -18,7 +18,7 @@ The main concepts to be discussed in this document are:
 
 > What is in a name?
 
-Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like "GNU is not UNIX". Z2IO is "Zero to IO", as in implementing it from zero until it is finished with a complete matured I/O framework.
+Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like GNU's "GNU is not UNIX". Z2IO is "Zero to IO", as in implementing it from zero until it is finished with a complete (and hopefully matured) I/O framework.
 
 ## Usage
 See how it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala).
@@ -33,7 +33,7 @@ import scala.util.Success
 import scala.concurrent.ExecutionContext.Implicits.global
 
 val io = for {
-  _ <- IO.pure(5)   // 5 is evaluated eagerly, don't use it for wrapping side effects
+  _ <- IO.pure(5)   // 5 is evaluated eagerly, don't use pure for wrapping side effects
   _ <- IO(throw new Exception("Boom")).handleError(_ => 5) // error is handled and IO with value 5 is returned
   _ <- IO(launch())           // launch() will be evaluated when IO.run is called. Executed on the same thread
   _ <- IO.async[Unit] { cb => // launchAsync() returns Future, IO.async can be used to wrap async operation
@@ -48,7 +48,7 @@ val io = for {
 ```
 
 Up until this point, there is no magic happened yet since for comprehension is only a syntactic sugar for calling `flatMap` and `map`.
-The only thing happened is constructing a nested `Bind` and several other constructs (`Pure`, `Delay`, `Async`).
+The only thing happened is constructing a nested `Bind` and several other constructs (`Pure`, `Delay`, `Async`, `Map`).
 We can just print it to see all the structure.
 
 ```scala
@@ -69,7 +69,7 @@ Run the `io` by calling its `unsafeRunSync` method.
 io.unsafeRunSync()
 ```
 Now the runloop will interpret all of the structures constructed in previous `for` comprehension.
-If async boundary is hit, wait until the async handler is finished using semaphore.
+If async boundary is hit, it waits until the async handler is finished using semaphore.
 Since we called `IO.never`, this will block the main thread forever.
 
 We can also executes the async version even though the execution will still never be finished due to `IO.never`,  but now the main thread is not blocked.
