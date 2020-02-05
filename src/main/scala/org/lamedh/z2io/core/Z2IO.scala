@@ -13,6 +13,8 @@ object Z2IO {
 
   trait IO[+A] {
 
+    import IO._
+
     def map[B](f: A => B): IO[B]         = Map(this, f)
     def flatMap[B](f: A => IO[B]): IO[B] = Bind(this, f)
 
@@ -31,15 +33,15 @@ object Z2IO {
     }
   }
 
-  final case class Map[A, B](io: IO[A], f: A => B)                         extends IO[B]
-  final case class Bind[A, B](io: IO[A], f: A => IO[B])                    extends IO[B]
-  final case class Pure[A](a: A)                                           extends IO[A]
-  final case class Delay[A](thunk: () => A)                                extends IO[A]
-  final case class HandleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
-  final case class RaiseError[T <: Throwable](t: T)                        extends IO[Nothing]
-  final case class Async[A](k: (Either[Throwable, A] => Unit) => Unit)     extends IO[A]
-
   object IO {
+
+    final case class Map[A, B](io: IO[A], f: A => B)                         extends IO[B]
+    final case class Bind[A, B](io: IO[A], f: A => IO[B])                    extends IO[B]
+    final case class Pure[A](a: A)                                           extends IO[A]
+    final case class Delay[A](thunk: () => A)                                extends IO[A]
+    final case class HandleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
+    final case class RaiseError[T <: Throwable](t: T)                        extends IO[Nothing]
+    final case class Async[A](k: (Either[Throwable, A] => Unit) => Unit)     extends IO[A]
 
     def apply[A](a: => A) = delay(a)
 

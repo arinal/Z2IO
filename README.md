@@ -18,7 +18,7 @@ The main concepts to be discussed in this document are:
 
 > What is in a name?
 
-Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like "GNU is not UNIX". Z2IO is Zero to IO, as in implementing it from zero until finished with a complete I/O framework.
+Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like "GNU is not UNIX". Z2IO is "Zero to IO", as in implementing it from zero until it is finished with a complete matured I/O framework.
 
 ## Usage
 See how it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala).
@@ -26,53 +26,63 @@ See how it is being used in [unit test](https://github.com/arinal/Z2IO/blob/mast
 Below is all the main functionality at a glance.
 
 ```scala
-import scala.util._
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 import org.lamedh.z2io.core.Z2IO.IO
+import scala.util.Failure
+import scala.util.Success
+import scala.concurrent.ExecutionContext.Implicits.global
 
 val io = for {
-  _ <- IO.pure(5)   // 5 is evaluated eagerly, don't use pure for wrapping side effects
-  _ <- IO(launch()) // launch will be evaluated when IO.run is called, executed on the same thread
-  _ <- IO.async[Unit] { cb => // launchAsync() returns Future, use IO.async to wrap async operation
+  _ <- IO.pure(5)   // 5 is evaluated eagerly, don't use it for wrapping side effects
+  _ <- IO(throw new Exception("Boom")).handleError(_ => 5) // error is handled and IO with value 5 is returned
+  _ <- IO(launch())           // launch() will be evaluated when IO.run is called. Executed on the same thread
+  _ <- IO.async[Unit] { cb => // launchAsync() returns Future, IO.async can be used to wrap async operation
         launchAsync().onComplete {
           case Success(v) => cb(Right(v))
           case Failure(t) => cb(Left(t))
         }
       }
-  _ <- IO.fromFuture(launchAsync()) // helper function for handling async future, does the same as previous operation
-  _ <- IO.never                     // this makes the execution never complete
+  _ <- IO.fromFuture(launchAsync()) // helper function for handling async future, does the same thing as previous operation
+  _ <- IO.never                     // this will never ever completed
 } yield ()
+```
 
-// Up until this point, there is no magic happened yet.
-// Since for comprehension is only calling flatMap, the only thing happened is
-// constructing a nested Bind and several other constructs (Pure, Delay, Async).
-// We can just print it to see all the structure
+Up until this point, there is no magic happened yet since for comprehension is only a syntactic sugar for calling `flatMap` and `map`.
+The only thing happened is constructing a nested `Bind` and several other constructs (`Pure`, `Delay`, `Async`).
+We can just print it to see all the structure.
+
+```scala
 println(io)
+```
 
-// The above statement prints:
-// Bind(Pure(5),org.lamedh.Main$$$Lambda$7426/803391093@8628866)
-// The fact that the printed structure is incomplete is interesting,
-// it's due to the lambda inside the nested flatMap hasn't been called yet.
-// In different context, incomplete structure is also what makes trampoline possible.
+The above statement prints:
+```scala
+Bind(Pure(5),org.lamedh.Main$$$Lambda$7426/803391093@8628866)
+```
+Note that the printed structure is incomplete because it should also contains `Delay`, `Async`, `HandleError` amongst other.
+The fact that the printed structure is incomplete is interesting because the lambda parameter inside the nested `flatMap` hasn't been evaluated yet.
+In different context, incomplete structure is also what makes [trampolining](https://github.com/arinal/Z2IO/blob/b57c47b9c202188d5036c85d769a21aee45ac299/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala#L24-L36) possible.
 
-// Executes the io. If async boundary is hit, will wait until the async handler is finished.
-// Since we called IO.never, this will block the main thread forever.
-// Comment the line below to skip the blocking effect
+Run the `io` by calling its `unsafeRunSync` method.
+
+```scala
 io.unsafeRunSync()
+```
+Now the runloop will interpret all of the structures constructed in previous `for` comprehension.
+If async boundary is hit, wait until the async handler is finished using semaphore.
+Since we called `IO.never`, this will block the main thread forever.
 
-// Executes async, even though the IO execution will still never be finished due to IO.never,
-// but now the main thread is not blocked and the application will finish
+We can also executes the async version even though the execution will still never be finished due to `IO.never`,  but now the main thread is not blocked.
+```scala
 io.unsafeRunAsync {
   case Right(value) => println("IO execution is finished (unlikely)")
   case Left(t)      => println("Error: " + t.getMessage)
 }
-
-println("Application finished")
 ```
 
 > TODO: add extra documentations
 
 ### Acknowledgments
 Special thanks to Fabio Labella [GitHub / Gitter](https://github.com/systemfw) who conducted a good presentation about Cats Effect internal.
+
 Build with love using [NeoVim](https://neovim.io/) and [metals](https://scalameta.org/metals/).

@@ -6,6 +6,7 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import scala.concurrent._
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.Semaphore
 
@@ -67,7 +68,7 @@ private object IORunLoop {
       sem.release()
     }
     loopAsync(io, stack, cb)
-    sem.acquire()
+    blocking(sem.acquire())
     ref.right.get.asInstanceOf[A]
   }
 
