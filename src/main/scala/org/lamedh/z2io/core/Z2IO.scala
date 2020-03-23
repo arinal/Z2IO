@@ -8,6 +8,8 @@ import scala.util.control.NonFatal
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import java.util.concurrent.ScheduledExecutorService
+import scala.concurrent.duration.FiniteDuration
 
 object Z2IO {
 
@@ -59,5 +61,12 @@ object Z2IO {
     }
 
     val never: IO[Nothing] = async(_ => ())
+    def shift(implicit ec: ExecutionContext): IO[Unit] = async { cb => ec.execute(() => cb(Right(()))) }
+
+    def sleep(duration: FiniteDuration)(implicit sched: ScheduledExecutorService): IO[Unit] =
+      async { cb =>
+        val r: Runnable = () => cb(Right(()))
+        sched.schedule(r, duration.length, duration.unit)
+      }
   }
 }

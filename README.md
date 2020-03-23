@@ -12,6 +12,7 @@ The main concepts to be discussed in this document are:
   - Fibers vs kernel (JVM) threads
   - Asynchronous boundary
   - Building M:N scheduler without actually making a scheduler by using runloop
+  - Semantic blocking
 - Functional programming
   - Free monad (IO instances are only ADTs with runloop as interpreter)
   - Trampoline
@@ -51,7 +52,7 @@ val io = for {
 } yield ()
 ```
 
-Up until this point, there is no magic happened yet. For comprehension is only a syntactic sugar for calling `flatMap` and `map`
+Up until this point, there is no magic happened yet. Since `for` comprehension is only a syntactic sugar for calling `flatMap` and `map`
 and by peeking the [code](https://github.com/arinal/Z2IO/blob/ec5417350b9ae493f8162e43e2edb1e717a2f87d/src/main/scala/org/lamedh/z2io/core/Z2IO.scala#L18-L19),
 it only constructs `Map` and `Bind` case classes. In fact, every operator inside `IO` (except something that has `unsafe` and `run`)
 is only composing the IO with "dummy" case classes such as `Pure`, `Delay`, `Async`, `Map`. That is, without some interpreter which can interpret our dummy data structures, our composed `io` is useless.
@@ -79,7 +80,7 @@ Now the runloop will interpret all of the structures constructed in the previous
 If async boundary is hit, it waits (by using semaphore) until the async handler is finished.
 Since `IO.never` is also incorporated, this will block the main thread forever.
 
-Executing the async version won't block the main thread, even though the execution of `io` still won't be finished due to `IO.never`.
+Executing the async version won't block the main thread, even though the execution of `io` still won't reach an end due to `IO.never`.
 ```scala
 io.unsafeRunAsync {
   case Right(value) => println("IO execution is finished (unlikely)")
@@ -87,7 +88,23 @@ io.unsafeRunAsync {
 }
 ```
 
-> TODO: add extra documentations
+Another important concepts are semantic blocking and yielding. The code below, `IO.sleep` won't block the current thread since it internally uses `ScheduledExecutorService` and schedule the continuation.
+`IO.sleep` takes `ScheduledExecutorService` as an implicit parameter but rather than instantiating it yourself, using `IOApp` as an entry point is a clean way to provide all of the needed explicit values and also shutting down everything
+after the `run` method has finished.
+
+```scala
+object Main extends IOApp {
+
+  def log(msg: String) = IO(println(s"${Thread.currentThread().getName}: $msg"))
+ 
+  def run(args: Array[String]): IO[Unit] =
+    for {
+      _ <- log("Hello") *> IO.shift *> log("world")
+      _ <- log("Wait 1 second") *> IO.sleep(1.second) *> log("Thanks for waiting!") //
+    } yield ()
+}
+```
+Without invoking `unsafeRunSync` the program can run because it is executed from `IOApp.main` method.
 
 ### Acknowledgments
 Special thanks to Fabio Labella [GitHub / Gitter](https://github.com/systemfw) who conducted a good presentation about Cats Effect internal.
