@@ -1,9 +1,9 @@
 # Z2IO
 
-> To whom who has nosey curiosity about the internal machinery
+> To those who are curious about internal machinery
 
 An implementation of IO monad to mimic the likes of [ZIO](https://zio.dev/) and [cats-effect](https://typelevel.org/cats-effect/).
-The aims of this project is educational, the implementation is meant to be simple and easy to understand whilst also has the key features offered by a complete IO monad frameworks.
+The aim of this project is educational, the implementation is meant to be simple and easy to understand whilst also having the key features offered by complete IO monad frameworks.
 
 The main concepts to be discussed in this document are:
 - Scheduler
@@ -18,15 +18,15 @@ The main concepts to be discussed in this document are:
   - Trampoline
   - Continuation passing style for async operation
 
-> What is in a name?
+> What's in a name?
 
 Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like GNU's "*GNU is not UNIX*". Z2IO is "*Zero to IO*",
 as in development from zero until reaching a complete (and hopefully matured) IO framework.
 
 ## Main functionality
-See how it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala).
+How it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala).
 
-Below is the main functionalities at a glance.
+Below are the main functionalities at a glance.
 
 ```scala
 import scala.concurrent.Future
@@ -52,11 +52,11 @@ val io = for {
 } yield ()
 ```
 
-Up until this point, there is no magic happened yet. Since `for` comprehension is only a syntactic sugar for calling `flatMap` and `map`
+Up until this point, no magic has happened yet, since `for` comprehension is only a syntactic sugar for calling `flatMap` and `map`
 and by peeking the [code](https://github.com/arinal/Z2IO/blob/ec5417350b9ae493f8162e43e2edb1e717a2f87d/src/main/scala/org/lamedh/z2io/core/Z2IO.scala#L18-L19),
 it only constructs `Map` and `Bind` case classes. In fact, every operator inside `IO` (except something that has `unsafe` and `run`)
-is only composing the IO with "dummy" case classes such as `Pure`, `Delay`, `Async`, `Map`. That is, without some interpreter which can interpret our dummy data structures, our composed `io` is useless.
-Executing `io.unsafeRunSync()` amongst other, will put the composed `io` into the interpreter and start the execution.
+is only composing the IO with "dummy" case classes such as `Pure`, `Delay`, `Async`, `Map`. That is, without an interpreter which can interpret our dummy data structures, our composed `io` is useless.
+Executing `io.unsafeRunSync()` amongst others, will put the composed `io` into the interpreter and start the execution.
 
 Let's see what the construction looks like by printing it.
 ```scala
@@ -67,9 +67,9 @@ The above statement prints:
 ```scala
 Bind(Pure(5),org.lamedh.Main$$$Lambda$7426/803391093@8628866)
 ```
-Note that the printed structure is incomplete because it should also contains `Map`, `Delay`, `Async`, and `HandleError`.
+Note that the printed structure is incomplete because it should also contain `Map`, `Delay`, `Async`, and `HandleError`.
 The fact that the printed structure is incomplete is interesting because the lambda parameter inside the nested `flatMap` hasn't been evaluated yet.
-In different context, incomplete structure is also what makes [trampolining](https://github.com/arinal/Z2IO/blob/b57c47b9c202188d5036c85d769a21aee45ac299/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala#L24-L36) possible.
+In a different context, the incomplete structure is also what makes [trampolining](https://github.com/arinal/Z2IO/blob/b57c47b9c202188d5036c85d769a21aee45ac299/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala#L24-L36) possible.
 
 Run the `io` by calling its `unsafeRunSync` method.
 
@@ -88,8 +88,8 @@ io.unsafeRunAsync {
 }
 ```
 
-Another important concepts are semantic blocking and yielding. The code below, `IO.sleep` won't block the current thread since it internally uses `ScheduledExecutorService` and schedule the continuation.
-`IO.sleep` takes `ScheduledExecutorService` as an implicit parameter but rather than instantiating it yourself, using `IOApp` as an entry point is a clean way to provide all of the needed explicit values and also shutting down everything
+Other important concepts are semantic blocking and yielding. The code below, `IO.sleep` won't block the current thread since it internally uses `ScheduledExecutorService` and schedules the continuation.
+`IO.sleep` takes `ScheduledExecutorService` as an implicit parameter but rather than instantiating it yourself, using `IOApp` as an entry point is a clean way of providing all of the needed explicit values and also shutting down everything
 after the `run` method has finished.
 
 ```scala
@@ -107,6 +107,6 @@ object Main extends IOApp {
 Without invoking `unsafeRunSync` the program can run because it is executed from `IOApp.main` method.
 
 ### Acknowledgments
-Special thanks to Fabio Labella [GitHub / Gitter](https://github.com/systemfw) who conducted a good presentation about Cats Effect internal.
+Special thanks to Fabio Labella [GitHub / Gitter](https://github.com/systemfw) who delivered a good presentation about Cats Effect internal.
 
 Build with love using [NeoVim](https://neovim.io/) and [metals](https://scalameta.org/metals/). Proudly made without IDE :)
