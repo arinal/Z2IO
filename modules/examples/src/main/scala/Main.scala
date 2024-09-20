@@ -1,22 +1,18 @@
 package org.lamedh
 
-import org.lamedh.z2io.core.Z2IO.IO.Flatmap
-import org.lamedh.z2io.core.Z2IO.IO.Delay
+import org.lamedh.z2io.core.IO
 import org.lamedh.z2io.core.IOApp
+import scala.concurrent.Future
+import scala.util.Failure
+import scala.util.Success
 import java.util.concurrent.Executors
 
 object Main extends IOApp {
 
-  import org.lamedh.z2io.core.Z2IO.IO
-  import scala.util.Failure
-  import scala.util.Success
-  import scala.concurrent.Future
-  import scala.concurrent.duration._
-
   def run(args: Array[String]): IO[Unit] = {
 
-    implicit val sleepers = Executors.newScheduledThreadPool(1)
-    import scala.concurrent.ExecutionContext.Implicits.global
+    import scala.concurrent.duration._
+    import IOApp._
 
     def log(msg: String)      = println(s"$msg  On thread: ${Thread.currentThread().getName}")
     def logAsync(msg: String) = Future(log(msg))
@@ -49,9 +45,9 @@ object Main extends IOApp {
       _ <- IO.sleep(1.second)
       _ <- IO(log("Waited 1s"))
 
-      _ <- IO.spawn(IO(ticking()))
-      _ <- IO.spawn(IO(ticking()))
-      _ <- IO.spawn(IO(ticking()))
+      _ <- IO.fork(IO(ticking()))
+      _ <- IO.fork(IO(ticking()))
+      _ <- IO.fork(IO(ticking()))
 
       _ <- IO.never // this will never ever completed
     } yield ()

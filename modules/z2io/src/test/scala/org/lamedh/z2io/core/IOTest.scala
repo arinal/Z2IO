@@ -1,6 +1,6 @@
 package org.lamedh.z2io.core
 
-import org.lamedh.z2io.core.Z2IO.IO
+import org.lamedh.z2io.core.IO
 import org.scalatest.AsyncFunSuite
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
@@ -11,9 +11,9 @@ import scala.util.Success
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class Z2ioTest extends AsyncFunSuite with Matchers {
+class IOTest extends AsyncFunSuite with Matchers {
 
-  import Z2ioTest._
+  import IOTest._
 
   test("simple run sync") {
     run(IO.pure(2)) shouldBe 2
@@ -102,7 +102,7 @@ class Z2ioTest extends AsyncFunSuite with Matchers {
     }
 }
 
-object Z2ioTest {
+object IOTest {
 
   val for_2_IO = for {
     _0 <- IO(0)

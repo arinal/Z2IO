@@ -1,6 +1,6 @@
 package org.lamedh.z2io.core
 
-import org.lamedh.z2io.core.Z2IO.IO
+import org.lamedh.z2io.core.IO
 import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.util.Failure
@@ -12,11 +12,10 @@ import java.util.concurrent.Semaphore
 
 private object IORunLoop {
 
-  import Z2IO._
   import IO._
 
-  def startSync[A](io: IO[A]): A                                       = loop(io, Nil)
-  def startAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = loopAsync(io, Nil, cb)
+  def runSync[A](io: IO[A]): A                        = loop(io, Nil)
+  def runAsync[A](io: IO[A], cb: FinishedCB[A]): Unit = loopAsync(io, Nil, cb)
 
   sealed trait Bind { def isKo: Boolean }
   final case class Ok(f: Any => IO[Any])       extends Bind { def isKo = false }
@@ -49,23 +48,10 @@ private object IORunLoop {
       case Async(_) => suspendInAsync[A](current, stack)
     }
 
-  private def suspendInAsync[A](io: IO[Any], stack: List[Bind]) = {
-    val sem = new Semaphore(0)
-    var result: Either[Throwable, Any] = null
-
-    val cb = { p: Either[Throwable, Any] =>
-      result = p
-      sem.release()
-    }
-    loopAsync(io, stack, cb)
-    blocking(sem.acquire())
-    result.right.get.asInstanceOf[A]
-  }
-
-  private def loopAsync[A](current: IO[Any], stack: List[Bind], cb: Either[Throwable, A] => Unit): Unit = {
+  private def loopAsync[A](current: IO[Any], stack: List[Bind], cb: FinishedCB[A]): Unit = {
     current match {
-      case Map(io, f)          => loopAsync(io, Ok(f andThen pure) :: stack, cb)
-      case Flatmap(io, f)      => loopAsync(io, Ok(f) :: stack, cb)
+      case Map(io, f)       => loopAsync(io, Ok(f andThen pure) :: stack, cb)
+      case Flatmap(io, f)   => loopAsync(io, Ok(f) :: stack, cb)
       case HandleErr(io, h) => loopAsync(io, Ko(h) :: stack, cb)
       case Delay(f) => {
         Try(f()) match {
@@ -93,4 +79,18 @@ private object IORunLoop {
         k(rest)
     }
   }
+
+  private def suspendInAsync[A](io: IO[Any], stack: List[Bind]) = {
+    val sem = new Semaphore(0)
+    var result: Either[Throwable, Any] = null
+
+    val cb = { p: Either[Throwable, Any] =>
+      result = p
+      sem.release()
+    }
+    loopAsync(io, stack, cb)
+    blocking(sem.acquire())
+    result.right.get.asInstanceOf[A]
+  }
+
 }
