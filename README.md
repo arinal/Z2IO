@@ -104,7 +104,7 @@ object Main extends IOApp {
     } yield ()
 }
 ```
-Without invoking `unsafeRunSync` the program can run because it is executed from `IOApp.main` method.
+Without invoking `unsafeRunSync` the program can still run because it is executed from `IOApp.main` method.
 
 ### Acknowledgments
 Special thanks to Fabio Labella [GitHub / Gitter](https://github.com/systemfw) who delivered a good presentation about Cats Effect internal.

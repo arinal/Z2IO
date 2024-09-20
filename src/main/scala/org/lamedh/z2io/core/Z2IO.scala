@@ -1,72 +1,81 @@
 package org.lamedh.z2io.core
 
 import scala.annotation.tailrec
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.concurrent.Promise
-import scala.util.control.NonFatal
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
-import java.util.concurrent.ScheduledExecutorService
+import scala.concurrent.{ ExecutionContext, Future, Promise }
 import scala.concurrent.duration.FiniteDuration
+import scala.util.{ Failure, Success, Try }
+import scala.util.control.NonFatal
+import java.util.concurrent.ScheduledExecutorService
 
 object Z2IO {
 
-  trait IO[+A] {
+  sealed trait IO[+A] {
 
     import IO._
 
     def map[B](f: A => B): IO[B]         = Map(this, f)
-    def flatMap[B](f: A => IO[B]): IO[B] = Bind(this, f)
+    def flatMap[B](f: A => IO[B]): IO[B] = Flatmap(this, f)
 
-    def *> [B](io: IO[B]): IO[B] = flatMap(_ => io)
+    def mapErr[B](h: Throwable => B): IO[B]         = IO.flatMapErr(this, h andThen IO.pure)
+    def flatMapErr[B](h: Throwable => IO[B]): IO[B] = IO.flatMapErr(this, h)
 
-    def handleError[B](h: Throwable => B): IO[B]         = IO.handleErrorWith(this, h andThen IO.pure)
-    def handleErrorWith[B](h: Throwable => IO[B]): IO[B] = IO.handleErrorWith(this, h)
-
-    def unsafeRunSync(): A                                     = IORunLoop.startSync(this)
-    def unsafeRunAsync(cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(this, cb)
-
-    def unsafeToFuture(): Future[A] = {
-      val p = Promise[A]
-      unsafeRunAsync(_.fold(p.failure, p.success))
-      p.future
-    }
+    def *>[B](io: IO[B]): IO[B] = flatMap(_ => io)
   }
 
   object IO {
 
-    final case class Map[A, B](io: IO[A], f: A => B)                         extends IO[B]
-    final case class Bind[A, B](io: IO[A], f: A => IO[B])                    extends IO[B]
-    final case class Pure[A](a: A)                                           extends IO[A]
-    final case class Delay[A](thunk: () => A)                                extends IO[A]
-    final case class HandleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
-    final case class RaiseError[T <: Throwable](t: T)                        extends IO[Nothing]
-    final case class Async[A](k: (Either[Throwable, A] => Unit) => Unit)     extends IO[A]
+    // Function to resume the runloop
+    type ResumeFunc = (Either[Throwable, Any] => Unit)
 
-    def apply[A](a: => A) = delay(a)
+    final case class Map[A, B](io: IO[A], f: A => B)         extends IO[B]
+    final case class Flatmap[A, B](io: IO[A], f: A => IO[B]) extends IO[B]
+    final case class Pure[A](a: A)                           extends IO[A]
+    final case class Delay[A](f: () => A)                    extends IO[A]
+    final case class Async[A](k: ResumeFunc => Unit)         extends IO[A]
 
-    def delay[A](thunk: => A)                                   = Delay(() => thunk)
-    def pure[A](a: A)                                           = Pure(a)
-    def raise[T <: Throwable](t: T)                             = RaiseError(t)
-    def handleErrorWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErrorWith(io, h)
-    def async[A](k: (Either[Throwable, A] => Unit) => Unit)     = Async(k)
+    final case class FlatmapError[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
+    final case class Error[T <: Throwable](t: T) extends IO[Nothing]
 
-    def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] = async { cb =>
-      fut.onComplete {
-        case Success(value) => cb(Right(value))
-        case Failure(t)     => cb(Left(t))
+    def pure[A](a: A)                                      = Pure(a)
+    def apply[A](a: => A)                                  = Delay(() => a)
+    def raise[T <: Throwable](t: T)                        = Error(t)
+    def flatMapErr[A, B](io: IO[A], h: Throwable => IO[B]) = FlatmapError(io, h)
+    def async[A](k: ResumeFunc => Unit)                    = Async(k)
+
+    def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] =
+      async { cb =>
+        fut.onComplete {
+          case Success(value) => cb(Right(value))
+          case Failure(t)     => cb(Left(t))
+        }
       }
+
+    def unsafeRunSync[A](io: IO[A]): A                                       = IORunLoop.startSync(io)
+    def unsafeRunAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(io, cb)
+    def unsafeToFuture[A](io: IO[A]): Future[A] = {
+      val p = Promise[A]
+      IO.unsafeRunAsync[A](io, _.fold(p.failure, p.success))
+      p.future
     }
 
     val never: IO[Nothing] = async(_ => ())
-    def shift(implicit ec: ExecutionContext): IO[Unit] = async { cb => ec.execute(() => cb(Right(()))) }
+
+    def shift(implicit ec: ExecutionContext): IO[Unit] =
+      async { cb =>
+        ec.execute(() => cb(Right(())))
+      }
+
+    def spawn[A](io: IO[A])(implicit ec: ExecutionContext): IO[A] =
+      async { cb =>
+        val spawnIO = (IO.shift *> io)
+        unsafeRunAsync[A](spawnIO, _ => ())
+        cb(Right(()))
+      }
 
     def sleep(duration: FiniteDuration)(implicit sched: ScheduledExecutorService): IO[Unit] =
       async { cb =>
-        val r: Runnable = () => cb(Right(()))
-        sched.schedule(r, duration.length, duration.unit)
+        val wake: Runnable = () => cb(Right(()))
+        sched.schedule(wake, duration.length, duration.unit)
       }
   }
 }
