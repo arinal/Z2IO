@@ -1,6 +1,6 @@
 # Z2IO
 
-> To those who are curious about internal machinery
+> To the inquisitive minds seeking to understand the internal mechanisms
 
 An implementation of IO monad to mimic the likes of [ZIO](https://zio.dev/) and [cats-effect](https://typelevel.org/cats-effect/).
 The aim of this project is educational, the implementation is meant to be simple and easy to understand whilst also having the key features offered by complete IO monad frameworks.
@@ -20,14 +20,15 @@ The main concepts to be discussed in this document are:
 
 > What's in a name?
 
-Z2IO is not ZIO2. The previous sentence is also not a funny recursive acronym like GNU's "*GNU is not UNIX*". Z2IO is "*Zero to IO*",
 as in development from zero until reaching a complete (and hopefully matured) IO framework.
+Z2IO is not ZIO2. It's also not a playful recursive acronym like GNU's "GNU is Not UNIX".
+Z2IO stands for "Zero to IO," signifying the journey of development from scratch to a fully-fledged
+(and ideally mature) IO framework.
 
 ## Main functionality
-How it is being used in [unit test](https://github.com/arinal/Z2IO/blob/master/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala).
-
-Below are the main functionalities at a glance.
-
+How it is being used in [Main.scala](https://github.com/arinal/Z2IO/blob/master/modules/examples/src/main/scala/Main.scala)
+and [unit test](https://github.com/arinal/Z2IO/blob/master/modules/z2io/src/test/scala/org/lamedh/z2io/core/IOTest.scala)
+Here's a quick overview of the key features.
 ```scala
 import scala.concurrent.Future
 import org.lamedh.z2io.core.Z2IO.IO
@@ -77,7 +78,7 @@ Run the `io` by calling its `unsafeRunSync` method.
 io.unsafeRunSync()
 ```
 Now the runloop will interpret all of the structures constructed in the previous `for` comprehension.
-If async boundary is hit, it waits (by using semaphore) until the async handler is finished.
+If async boundary is hit, it's blocked until the async handler is finished.
 Since `IO.never` is also incorporated, this will block the main thread forever.
 
 Other important concepts are semantic blocking and yielding. The `IO.sleep` below won't block the current thread since it internally uses `ScheduledExecutorService` and schedules the continuation.
