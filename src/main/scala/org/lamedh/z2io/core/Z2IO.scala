@@ -16,8 +16,8 @@ object Z2IO {
     def map[B](f: A => B): IO[B]         = Map(this, f)
     def flatMap[B](f: A => IO[B]): IO[B] = Flatmap(this, f)
 
-    def mapErr[B](h: Throwable => B): IO[B]         = IO.flatMapErr(this, h andThen IO.pure)
-    def flatMapErr[B](h: Throwable => IO[B]): IO[B] = IO.flatMapErr(this, h)
+    def handleErr[B](h: Throwable => B): IO[B]         = IO.handleErrWith(this, h andThen IO.pure)
+    def handleErrWith[B](h: Throwable => IO[B]): IO[B] = IO.handleErrWith(this, h)
 
     def *>[B](io: IO[B]): IO[B] = flatMap(_ => io)
   }
@@ -33,22 +33,14 @@ object Z2IO {
     final case class Delay[A](f: () => A)                    extends IO[A]
     final case class Async[A](k: ResumeFunc => Unit)         extends IO[A]
 
-    final case class FlatmapError[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
+    final case class HandleErr[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
     final case class Error[T <: Throwable](t: T) extends IO[Nothing]
 
-    def pure[A](a: A)                                      = Pure(a)
-    def apply[A](a: => A)                                  = Delay(() => a)
-    def raise[T <: Throwable](t: T)                        = Error(t)
-    def flatMapErr[A, B](io: IO[A], h: Throwable => IO[B]) = FlatmapError(io, h)
-    def async[A](k: ResumeFunc => Unit)                    = Async(k)
-
-    def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] =
-      async { cb =>
-        fut.onComplete {
-          case Success(value) => cb(Right(value))
-          case Failure(t)     => cb(Left(t))
-        }
-      }
+    def pure[A](a: A)                                         = Pure(a)
+    def apply[A](a: => A)                                     = Delay(() => a)
+    def raise[T <: Throwable](t: T)                           = Error(t)
+    def handleErrWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErr(io, h)
+    def async[A](k: ResumeFunc => Unit)                       = Async(k)
 
     def unsafeRunSync[A](io: IO[A]): A                                       = IORunLoop.startSync(io)
     def unsafeRunAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(io, cb)
@@ -76,6 +68,14 @@ object Z2IO {
       async { cb =>
         val wake: Runnable = () => cb(Right(()))
         sched.schedule(wake, duration.length, duration.unit)
+      }
+
+    def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] =
+      async { cb =>
+        fut.onComplete {
+          case Success(value) => cb(Right(value))
+          case Failure(t)     => cb(Left(t))
+        }
       }
   }
 }

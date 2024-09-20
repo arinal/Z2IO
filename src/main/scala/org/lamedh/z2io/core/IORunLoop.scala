@@ -27,7 +27,7 @@ private object IORunLoop {
     current match {
       case Map(io, f)          => loop(io, Ok(f andThen pure) :: stack)
       case Flatmap(io, f)      => loop(io, Ok(f) :: stack)
-      case FlatmapError(io, f) => loop(io, Ko(f) :: stack)
+      case HandleErr(io, f) => loop(io, Ko(f) :: stack)
       case Delay(f) => {
         Try(f()) match {
           case Success(v) => loop(pure(v), stack)
@@ -50,23 +50,23 @@ private object IORunLoop {
     }
 
   private def suspendInAsync[A](io: IO[Any], stack: List[Bind]) = {
-    val sem                         = new Semaphore(0)
-    var ref: Either[Throwable, Any] = null
+    val sem = new Semaphore(0)
+    var result: Either[Throwable, Any] = null
 
     val cb = { p: Either[Throwable, Any] =>
-      ref = p
+      result = p
       sem.release()
     }
     loopAsync(io, stack, cb)
     blocking(sem.acquire())
-    ref.right.get.asInstanceOf[A]
+    result.right.get.asInstanceOf[A]
   }
 
   private def loopAsync[A](current: IO[Any], stack: List[Bind], cb: Either[Throwable, A] => Unit): Unit =
     current match {
       case Map(io, f)          => loopAsync(io, Ok(f andThen pure) :: stack, cb)
       case Flatmap(io, f)      => loopAsync(io, Ok(f) :: stack, cb)
-      case FlatmapError(io, h) => loopAsync(io, Ko(h) :: stack, cb)
+      case HandleErr(io, h) => loopAsync(io, Ko(h) :: stack, cb)
       case Delay(f) => {
         Try(f) match {
           case Success(v)                  => loopAsync(pure(v), stack, cb)

@@ -37,7 +37,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 val io = for {
   _ <- IO.pure(5)         // use pure only if we have the value already, don't ever use it to wrap expression with side effects
-  _ <- IO.delay(launch()) // side effects can be wrapped with delay. The wrapped expression will be evaluated when IO.run is called
+  _ <- IO.delay(launch()) // side effects can be wrapped with delay. The wrapped expression will be evaluated inside the runloop
   _ <- IO(launch())       // IO.apply is an alias for IO.delay. As with previous operation, will be evaluated on the same thread
   _ <- IO.async[Unit] { cb => // IO.async can be used to wrap async operation. Here, launchAsync() returns Future
         launchAsync().onComplete {
@@ -52,9 +52,9 @@ val io = for {
 } yield ()
 ```
 
-Up until this point, no magic has happened yet, since `for` comprehension is only a syntactic sugar for calling `flatMap` and `map`
-and by peeking the [code](https://github.com/arinal/Z2IO/blob/ec5417350b9ae493f8162e43e2edb1e717a2f87d/src/main/scala/org/lamedh/z2io/core/Z2IO.scala#L18-L19),
-it only constructs `Map` and `Bind` case classes. In fact, every operator inside `IO` (except something that has `unsafe` and `run`)
+Up until this point, no magic has happened yet, since `for` comprehension is only a syntactic sugar for calling `flatMap` and `map`.
+The [code](https://github.com/arinal/Z2IO/blob/master/src/main/scala/org/lamedh/z2io/core/Z2IO.scala#L16-L17)
+only constructs `Map` and `Flatmap` case classes. In fact, every operator inside `IO` (except something that has `unsafe` and `run`)
 is only composing the IO with "dummy" case classes such as `Pure`, `Delay`, `Async`, `Map`. That is, without an interpreter which can interpret our dummy data structures, our composed `io` is useless.
 Executing `io.unsafeRunSync()` amongst others, will put the composed `io` into the interpreter and start the execution.
 
@@ -65,7 +65,7 @@ println(io)
 
 The above statement prints:
 ```scala
-Bind(Pure(5),org.lamedh.Main$$$Lambda$7426/803391093@8628866)
+Flatmap(Pure(5),org.lamedh.Main$$$Lambda$7426/803391093@8628866)
 ```
 Note that the printed structure is incomplete because it should also contain `Map`, `Delay`, `Async`, and `HandleError`.
 The fact that the printed structure is incomplete is interesting because the lambda parameter inside the nested `flatMap` hasn't been evaluated yet.
@@ -88,7 +88,7 @@ io.unsafeRunAsync {
 }
 ```
 
-Other important concepts are semantic blocking and yielding. The code below, `IO.sleep` won't block the current thread since it internally uses `ScheduledExecutorService` and schedules the continuation.
+Other important concepts are semantic blocking and yielding. The `IO.sleep` below won't block the current thread since it internally uses `ScheduledExecutorService` and schedules the continuation.
 `IO.sleep` takes `ScheduledExecutorService` as an implicit parameter but rather than instantiating it yourself, using `IOApp` as an entry point is a clean way of providing all of the needed explicit values and also shutting down everything
 after the `run` method has finished.
 
