@@ -80,14 +80,6 @@ Now the runloop will interpret all of the structures constructed in the previous
 If async boundary is hit, it waits (by using semaphore) until the async handler is finished.
 Since `IO.never` is also incorporated, this will block the main thread forever.
 
-Executing the async version won't block the main thread, even though the execution of `io` still won't reach an end due to `IO.never`.
-```scala
-io.unsafeRunAsync {
-  case Right(value) => println("IO execution is finished (unlikely)")
-  case Left(t)      => println("Error: " + t.getMessage)
-}
-```
-
 Other important concepts are semantic blocking and yielding. The `IO.sleep` below won't block the current thread since it internally uses `ScheduledExecutorService` and schedules the continuation.
 `IO.sleep` takes `ScheduledExecutorService` as an implicit parameter but rather than instantiating it yourself, using `IOApp` as an entry point is a clean way of providing all of the needed explicit values and also shutting down everything
 after the `run` method has finished.
@@ -104,9 +96,8 @@ object Main extends IOApp {
     } yield ()
 }
 ```
-Without invoking `unsafeRunSync` the program can still run because it is executed from `IOApp.main` method.
 
 ### Acknowledgments
 Special thanks to Fabio Labella [GitHub / Gitter](https://github.com/systemfw) who delivered a good presentation about Cats Effect internal.
 
-Build with love using [NeoVim](https://neovim.io/) and [metals](https://scalameta.org/metals/). Proudly made without IDE :)
+Built with [NeoVim](https://neovim.io/) and [metals](https://scalameta.org/metals/). Proudly crafted without an IDE :)

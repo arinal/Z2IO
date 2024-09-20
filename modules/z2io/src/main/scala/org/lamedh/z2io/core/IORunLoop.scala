@@ -25,8 +25,8 @@ private object IORunLoop {
   @tailrec
   private def loop[A](current: IO[Any], stack: List[Bind]): A =
     current match {
-      case Map(io, f)          => loop(io, Ok(f andThen pure) :: stack)
-      case Flatmap(io, f)      => loop(io, Ok(f) :: stack)
+      case Map(io, f)       => loop(io, Ok(f andThen pure) :: stack)
+      case Flatmap(io, f)   => loop(io, Ok(f) :: stack)
       case HandleErr(io, f) => loop(io, Ko(f) :: stack)
       case Delay(f) => {
         Try(f()) match {
@@ -34,10 +34,10 @@ private object IORunLoop {
           case Failure(t) => loop(raise(t), stack)
         }
       }
-      case Pure(any) =>
+      case Pure(v) =>
         stack.dropWhile(_.isKo) match {
-          case Nil           => any.asInstanceOf[A]
-          case Ok(f) :: tail => loop(f(any), tail)
+          case Nil           => v.asInstanceOf[A]
+          case Ok(f) :: tail => loop(f(v), tail)
           case _             => throw new AssertionError("Unreachable code")
         }
       case Error(t) =>
@@ -62,22 +62,22 @@ private object IORunLoop {
     result.right.get.asInstanceOf[A]
   }
 
-  private def loopAsync[A](current: IO[Any], stack: List[Bind], cb: Either[Throwable, A] => Unit): Unit =
+  private def loopAsync[A](current: IO[Any], stack: List[Bind], cb: Either[Throwable, A] => Unit): Unit = {
     current match {
       case Map(io, f)          => loopAsync(io, Ok(f andThen pure) :: stack, cb)
       case Flatmap(io, f)      => loopAsync(io, Ok(f) :: stack, cb)
       case HandleErr(io, h) => loopAsync(io, Ko(h) :: stack, cb)
       case Delay(f) => {
-        Try(f) match {
+        Try(f()) match {
           case Success(v)                  => loopAsync(pure(v), stack, cb)
           case Failure(t) if stack.isEmpty => cb(Left(t))
           case Failure(t)                  => loopAsync(raise(t), stack, cb)
         }
       }
-      case Pure(any) =>
+      case Pure(v) =>
         stack.dropWhile(_.isKo) match {
-          case Nil           => cb(Right(any.asInstanceOf[A]))
-          case Ok(f) :: tail => loopAsync(f(any), tail, cb)
+          case Nil           => cb(Right(v.asInstanceOf[A]))
+          case Ok(f) :: tail => loopAsync(f(v), tail, cb)
           case _             => throw new AssertionError("Unreachable code")
         }
       case Error(t) =>
@@ -92,4 +92,5 @@ private object IORunLoop {
         }
         k(rest)
     }
+  }
 }

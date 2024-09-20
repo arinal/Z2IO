@@ -27,20 +27,20 @@ object Z2IO {
     // Function to resume the runloop
     type ResumeFunc = (Either[Throwable, Any] => Unit)
 
-    final case class Map[A, B](io: IO[A], f: A => B)         extends IO[B]
-    final case class Flatmap[A, B](io: IO[A], f: A => IO[B]) extends IO[B]
+    final case class Map[A, B](io: IO[B], f: B => A)         extends IO[A]
+    final case class Flatmap[A, B](io: IO[B], f: B => IO[A]) extends IO[A]
     final case class Pure[A](a: A)                           extends IO[A]
     final case class Delay[A](f: () => A)                    extends IO[A]
     final case class Async[A](k: ResumeFunc => Unit)         extends IO[A]
 
     final case class HandleErr[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
-    final case class Error[T <: Throwable](t: T) extends IO[Nothing]
+    final case class Error[T <: Throwable](t: T)                       extends IO[Nothing]
 
     def pure[A](a: A)                                         = Pure(a)
     def apply[A](a: => A)                                     = Delay(() => a)
     def raise[T <: Throwable](t: T)                           = Error(t)
     def handleErrWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErr(io, h)
-    def async[A](k: ResumeFunc => Unit)                       = Async(k)
+    def async[A](k: ResumeFunc => Unit): IO[A]                = Async(k)
 
     def unsafeRunSync[A](io: IO[A]): A                                       = IORunLoop.startSync(io)
     def unsafeRunAsync[A](io: IO[A], cb: Either[Throwable, A] => Unit): Unit = IORunLoop.startAsync(io, cb)
@@ -73,7 +73,7 @@ object Z2IO {
     def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] =
       async { cb =>
         fut.onComplete {
-          case Success(value) => cb(Right(value))
+          case Success(v) => cb(Right(v))
           case Failure(t)     => cb(Left(t))
         }
       }
