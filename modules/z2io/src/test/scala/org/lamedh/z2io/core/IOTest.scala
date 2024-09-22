@@ -60,25 +60,25 @@ class IOTest extends AsyncFunSuite with Matchers {
     _2 shouldBe 2
   }
 
-  // test("async: handle error flow") {
-  //   var _4_0 = (0, 0)
-  //   IO.unsafeRunAsync(handler_4_0_IO, {
-  //     case Right(tup) => _4_0 = tup
-  //     case _          =>
-  //   })
-  //   _4_0 shouldBe (4, 0)
-  // }
+  test("async: handle error flow") {
+    var _4_0 = (0, 0)
+    IO.unsafeRunAsync[(Int, Int)](handler_4_0_IO, {
+      case Right(tup) => _4_0 = tup
+      case _          =>
+    })
+    _4_0 shouldBe (4, 0)
+  }
 
-  // test("async: handle error") {
-  //   var left = false
-  //   val ioErr = IO { throw new Exception("Boom"); 5 }
-  //   val cb: (Either[Throwable, Int] => Unit) = {
-  //     case Left(_) => left = true
-  //     case Right(n)       => ()
-  //   }
-  //   IO.unsafeRunAsync[Int](ioErr, cb)
-  //   left shouldBe true
-  // }
+  test("async: handle error") {
+    var left = false
+    val ioErr = IO { throw new Exception("Boom"); 5 }
+    val cb: (Either[Throwable, Int] => Unit) = {
+      case Left(_) => left = true
+      case Right(n)       => ()
+    }
+    IO.unsafeRunAsync[Int](ioErr, cb)
+    left shouldBe true
+  }
 
   test("from future and back to future") {
     val io = IO.fromFuture(Future.successful(5))

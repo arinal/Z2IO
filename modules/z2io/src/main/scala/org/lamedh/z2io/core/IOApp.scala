@@ -9,7 +9,8 @@ trait IOApp {
 
   def run(args: Array[String]): IO[Unit]
 
-  final def main(args: Array[String]) = IO.unsafeRunSync(run(args))
+  final def main(args: Array[String]) =
+    IO.unsafeRunSync(run(args))
 }
 
 object IOApp {
@@ -19,6 +20,6 @@ object IOApp {
     final def main(args: Array[String]) = IO.unsafeRunSync(run)
   }
 
-  implicit val sleepers: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
-  implicit val ec: ExecutionContext               = scala.concurrent.ExecutionContext.Implicits.global
+  implicit val sleepers: ScheduledExecutorService = Executors.newScheduledThreadPool(12)
+  implicit val ec: ExecutionContext               = ExecutionContext.fromExecutorService(sleepers)
 }

@@ -7,20 +7,19 @@ import scala.util.Failure
 import scala.util.Success
 import java.util.concurrent.Executors
 
-object Main extends IOApp {
+object Main extends IOApp.Simple {
 
-  def run(args: Array[String]): IO[Unit] = {
+  def run: IO[Unit] =
+    general
 
+  def general = {
     import scala.concurrent.duration._
     import IOApp._
 
     def log(msg: String)      = println(s"$msg  On thread: ${Thread.currentThread().getName}")
     def logAsync(msg: String) = Future(log(msg))
 
-    def ticking() = while (true) {
-      log("Tick")
-      Thread.sleep(1000)
-    }
+    def ticking = (IO(log("Tick")) *> IO.sleep(1.second)).forever
 
     for {
       _ <- IO.pure(5) // 5 is evaluated eagerly, don't use it for wrapping side effects
@@ -45,10 +44,11 @@ object Main extends IOApp {
       _ <- IO.sleep(1.second)
       _ <- IO(log("Waited 1s"))
 
-      _ <- IO.fork(IO(ticking()))
-      _ <- IO.fork(IO(ticking()))
-      _ <- IO.fork(IO(ticking()))
+      _ <- IO.fork(ticking)
+      _ <- IO.fork(ticking)
+      _ <- IO.fork(ticking)
 
+      _ <- IO(log("executing IO.never"))
       _ <- IO.never // this will never ever completed
     } yield ()
   }
