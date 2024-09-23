@@ -39,6 +39,7 @@ object IO {
   final case class HandleErr[A, B](io: IO[A], h: Throwable => IO[B]) extends IO[B]
   final case class Error[T <: Throwable](t: T) extends IO[Nothing]
 
+  def unit                                                  = pure(())
   def pure[A](a: A)                                         = Pure(a)
   def apply[A](a: => A)                                     = Delay(() => a)
   def raise[T <: Throwable](t: T)                           = Error(t)
@@ -61,17 +62,17 @@ object IO {
       ec.execute(() => cb(Right(())))
     }
 
+  def sleep(duration: FiniteDuration)(implicit sched: ScheduledExecutorService, ec: ExecutionContext): IO[Unit] =
+    async[Unit] { cb =>
+      val wake: Runnable = () => cb(Right(()))
+      sched.schedule(wake, duration.length, duration.unit)
+    }
+
   def fork[A](io: IO[A])(implicit ec: ExecutionContext): IO[Unit] =
     async[Unit] { cb =>
       val spawnIO = (IO.shift *> io)
       unsafeRunAsync[A](spawnIO, (_: Either[Throwable, A]) => ())
       cb(Right(()))
-    }
-
-  def sleep(duration: FiniteDuration)(implicit sched: ScheduledExecutorService, ec: ExecutionContext): IO[Unit] =
-    async[Unit] { cb =>
-      val wake: Runnable = () => cb(Right(()))
-      sched.schedule(wake, duration.length, duration.unit)
     }
 
   def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] =
