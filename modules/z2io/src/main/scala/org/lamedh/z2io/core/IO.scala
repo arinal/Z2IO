@@ -1,10 +1,9 @@
 package org.lamedh.z2io.core
 
-import scala.annotation.tailrec
-import scala.concurrent.{ ExecutionContext, Future, Promise }
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{ Failure, Success, Try }
-import scala.util.control.NonFatal
+import scala.annotation.tailrec
 
 import java.util.concurrent.ScheduledExecutorService
 

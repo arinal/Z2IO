@@ -5,7 +5,6 @@ import org.lamedh.z2io.core.IOApp
 import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
-import java.util.concurrent.Executors
 
 object Main extends IOApp.Simple {
 
@@ -51,7 +50,6 @@ object Main extends IOApp.Simple {
       n1 <- f1.join
       n2 <- f2.join
       n3 <- f3.join
-
       _ <- IO(log(s"Result: $n1, $n2, $n3"))
 
       _ <- IO(log("executing IO.never"))

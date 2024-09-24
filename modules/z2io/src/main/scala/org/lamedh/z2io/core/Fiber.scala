@@ -3,14 +3,9 @@ package org.lamedh.z2io.core
 import org.lamedh.z2io.core.IO
 
 import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
 import scala.concurrent._
 
-import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.Semaphore
-import scala.collection.mutable.Queue
 
 trait Fiber[A] {
   def join: IO[A]
