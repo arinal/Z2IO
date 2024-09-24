@@ -52,8 +52,8 @@ object Main extends IOApp.Simple {
       n3 <- f3.join
       _ <- IO(log(s"Result: $n1, $n2, $n3"))
 
-      _ <- IO(log("executing IO.never"))
-      _ <- IO.never
+      // _ <- IO(log("executing IO.never"))
+      // _ <- IO.never
     } yield ()
   }
 }

@@ -62,7 +62,9 @@ private object Fiber {
       result match {
         case Some(Right(res)) => res
         case Some(Left(err))  => throw err
-        case None             => blocking(sem.acquire()); unsafeRunSync()
+        case None             =>
+          blocking(sem.acquire())
+          unsafeRunSync()
       }
     }
   }
