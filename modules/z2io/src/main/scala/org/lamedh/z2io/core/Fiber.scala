@@ -38,32 +38,32 @@ private object Fiber {
       result match {
         case Some(Right(res)) => pure(res)
         case Some(Left(err))  => raise(err)
-        case None =>
-          async[A] { cb =>
-            joinerCb = Some(cb)
-          }
+        case None             => async[A] { cb => joinerCb = Some(cb) }
       }
 
     def unsafeRun(cb: IO.Callback[A]): Unit = {
-      val newCb = { p: Either[Throwable, A] =>
-        result = Some(p)
-        joinerCb.foreach(_(p))
-        cb(p)
+      val newCb = { res: Either[Throwable, A] =>
+        result = Some(res)
+        joinerCb.foreach(_(res))
+        cb(res)
       }
       Runloop.loop(io, Nil, newCb)
     }
 
     def unsafeRunSync(): A = {
       val sem = new Semaphore(0)
-      var result: Either[Throwable, A] = null
+      var result: Option[Either[Throwable, A]] = None
 
-      val finishCb = { p: Either[Throwable, A] =>
-        result = p
+      val finishCb = { res: Either[Throwable, A] =>
+        result = Some(res)
         blocking(sem.release())
       }
       unsafeRun(finishCb)
-      if (result == null) blocking(sem.acquire())
-      result.right.get.asInstanceOf[A]
+      result match {
+        case Some(Right(res)) => res
+        case Some(Left(err))  => throw err
+        case None             => blocking(sem.acquire()); unsafeRunSync()
+      }
     }
   }
 }

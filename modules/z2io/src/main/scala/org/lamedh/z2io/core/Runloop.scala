@@ -13,7 +13,7 @@ object Runloop {
   import IO._
 
   sealed trait Bind { def isKo: Boolean }
-  final case class Ok(f: Any => IO[Any])       extends Bind { def isKo       = false }
+  final case class Ok(f: Any => IO[Any])       extends Bind { def isKo = false }
   final case class Ko(f: Throwable => IO[Any]) extends Bind { def isKo = true }
 
   @tailrec
@@ -21,16 +21,15 @@ object Runloop {
     current match {
       case Flatmap(io, f)   => loop(io, Ok(f) :: stack, finishCb)
       case HandleErr(io, f) => loop(io, Ko(f) :: stack, finishCb)
-      case Delay(f) => {
+      case Delay(f) =>
         Try(f()) match {
           case Success(v)                  => loop(pure(v), stack, finishCb)
-          case Failure(t) if stack.isEmpty => finishCb(Left(t)); None
+          case Failure(t) if stack.isEmpty => finishCb(Left(t))
           case Failure(t)                  => loop(raise(t), stack, finishCb)
         }
-      }
       case Pure(v) =>
         stack.dropWhile(_.isKo) match {
-          case Nil           => finishCb(Right(v.asInstanceOf[A])); None
+          case Nil           => finishCb(Right(v.asInstanceOf[A]))
           case Ok(f) :: tail => loop(f(v), tail, finishCb)
           case _             => throw new AssertionError("Unreachable code")
         }
@@ -45,7 +44,7 @@ object Runloop {
           case Ko(h) :: tail => loop(h(t), tail, finishCb)
           case _             => throw new AssertionError("Unreachable code")
         }
-      case Async(f) => f(resume(finishCb, stack)); None
+      case Async(f) => f(resume(finishCb, stack))
     }
 
   private def resume[A](cb: Callback[A], stack: List[Bind]): Either[Throwable, Any] => Unit =
