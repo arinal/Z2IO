@@ -12,7 +12,7 @@ sealed trait IO[+A] {
 
   import IO._
 
-  def map[B](f: A => B): IO[B]         = Map(this, f)
+  def map[B](f: A => B): IO[B]         = Flatmap(this, f andThen pure)
   def flatMap[B](f: A => IO[B]): IO[B] = Flatmap(this, f)
 
   def repeat(n: Int): IO[A] = Repeat[A, Int](this, n, _ - 1, _ <= 1)
@@ -26,9 +26,8 @@ sealed trait IO[+A] {
 
 object IO {
 
-  type Callback[A]   = Either[Throwable, A] => Unit
+  type Callback[A] = Either[Throwable, A] => Unit
 
-  final case class Map[A, B](io: IO[B], f: B => A)         extends IO[A]
   final case class Flatmap[A, B](io: IO[B], f: B => IO[A]) extends IO[A]
   final case class Pure[A](a: A)                           extends IO[A]
   final case class Delay[A](f: () => A)                    extends IO[A]
@@ -46,15 +45,6 @@ object IO {
   def handleErrWith[A, B](io: IO[A], h: Throwable => IO[B]) = HandleErr(io, h)
   def async[A](f: Callback[A] => Unit): IO[A]               = Async(f)
 
-  def unsafeRunSync[A](io: IO[A]): A                      = IORunLoop.runSync(io)
-  def unsafeRunAsync[A](io: IO[A], cb: Callback[A]): Unit = IORunLoop.runAsync(io, cb)
-
-  def unsafeToFuture[A](io: IO[A]): Future[A] = {
-    val p = Promise[A]
-    IO.unsafeRunAsync[A](io, _.fold(p.failure, p.success))
-    p.future
-  }
-
   val never: IO[Nothing] = async[Nothing](_ => ())
 
   def shift(implicit ec: ExecutionContext): IO[Unit] =
@@ -62,17 +52,18 @@ object IO {
       ec.execute(() => cb(Right(())))
     }
 
-  def sleep(duration: FiniteDuration)(implicit sched: ScheduledExecutorService, ec: ExecutionContext): IO[Unit] =
+  def sleep(duration: FiniteDuration)(implicit sched: ScheduledExecutorService): IO[Unit] =
     async[Unit] { cb =>
       val wake: Runnable = () => cb(Right(()))
       sched.schedule(wake, duration.length, duration.unit)
     }
 
-  def fork[A](io: IO[A])(implicit ec: ExecutionContext): IO[Unit] =
-    async[Unit] { cb =>
+  def fork[A](io: IO[A])(implicit ec: ExecutionContext): IO[Fiber[A]] =
+    async[Fiber[A]] { cb =>
       val spawnIO = (IO.shift *> io)
-      unsafeRunAsync[A](spawnIO, (_: Either[Throwable, A]) => ())
-      cb(Right(()))
+      val fiber = Fiber(spawnIO)
+      fiber.unsafeRun(_ => ())
+      cb(Right(fiber))
     }
 
   def fromFuture[A](fut: => Future[A])(implicit ec: ExecutionContext): IO[A] =
