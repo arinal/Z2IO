@@ -1,12 +1,8 @@
 package org.lamedh.z2io.core
 
 import org.lamedh.z2io.core.IO
-
 import scala.util.{Failure, Success, Try}
 import scala.annotation.tailrec
-
-import java.util.concurrent.locks.ReentrantLock
-import java.util.concurrent.Semaphore
 
 object Runloop {
 
@@ -17,7 +13,7 @@ object Runloop {
   final case class Ko(f: Throwable => IO[Any]) extends Bind { def isKo = true }
 
   @tailrec
-  def loop[A](current: IO[Any], stack: List[Bind], finishCb: IO.Callback[A]): Unit =
+  def loop[A](current: IO[Any], stack: List[Bind], finishCb: Callback[A]): Unit =
     current match {
       case Flatmap(io, f)   => loop(io, Ok(f) :: stack, finishCb)
       case HandleErr(io, f) => loop(io, Ko(f) :: stack, finishCb)
