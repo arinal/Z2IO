@@ -11,7 +11,6 @@ The main concepts to be discussed in this document are:
   - M:N scheduler
   - Fibers vs kernel (JVM) threads
   - Asynchronous boundary
-  - Building M:N scheduler without actually making a scheduler by using runloop
   - Semantic blocking
 - Functional programming
   - Free monad (IO instances are only ADTs with runloop as interpreter)
