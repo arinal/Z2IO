@@ -4,6 +4,7 @@
 
 An implementation of IO monad to mimic the likes of [ZIO](https://zio.dev/) and [cats-effect](https://typelevel.org/cats-effect/).
 The aim of this project is educational, the implementation is meant to be simple and easy to understand whilst also having the key features offered by complete IO monad frameworks.
+See the slide online [here](https://hackmd.io/@9Tvcj_JcSGGwklB8pDvExA/ry4yKS1A0)
 
 The main concepts to be discussed in this document are:
 - Scheduler
@@ -13,13 +14,12 @@ The main concepts to be discussed in this document are:
   - Asynchronous boundary
   - Semantic blocking
 - Functional programming
-  - Free monad (IO instances are only ADTs with runloop as interpreter)
+  - Free monad (IO instances are only ADTs and interpreted by the runloop)
   - Trampoline
   - Continuation passing style for async operation
 
 > What's in a name?
 
-as in development from zero until reaching a complete (and hopefully matured) IO framework.
 Z2IO is not ZIO2. It's also not a playful recursive acronym like GNU's "GNU is Not UNIX".
 Z2IO stands for "Zero to IO," signifying the journey of development from scratch to a fully-fledged
 (and ideally mature) IO framework.
@@ -36,19 +36,27 @@ import scala.util.Success
 import scala.concurrent.ExecutionContext.Implicits.global
 
 val io = for {
-  _ <- IO.pure(5)         // use pure only if we have the value already, don't ever use it to wrap expression with side effects
-  _ <- IO.delay(launch()) // side effects can be wrapped with delay. The wrapped expression will be evaluated inside the runloop
-  _ <- IO(launch())       // IO.apply is an alias for IO.delay. As with previous operation, will be evaluated on the same thread
-  _ <- IO.async[Unit] { cb => // IO.async can be used to wrap async operation. Here, launchAsync() returns Future
+  _ <- IO.pure(5)   // Wraps an existing value into IO.
+  _ <- IO(launch()) // Side effects can be wrapped with delay. The wrapped expression will be when the IO is run.
+  _ <- IO.async[Unit] { cb => // IO.async can be used to wrap an async operation.
         launchAsync().onComplete {
           case Success(v) => cb(Right(v))
           case Failure(t) => cb(Left(t))
         }
       }
-  _ <- IO.fromFuture(launchAsync())    // helper function for handling async future, does the exact same thing as previous operation
-  _ <- IO(throw new Exception("Boom")) // throwing error inside delay construct
-         .handleError(_ => 5)          // thrown error is handled and IO of value 5 is returned instead
-  _ <- IO.never                        // this makes our io never reach completion
+  _ <- IO.fromFuture(launchAsync())    // Does the exact same thing as previous operation
+
+  five <- IO(throw new Exception("Boom")) // Exception is caught during the IO evaluation.
+         .handleError(_ => 5)             // Then it's handled with a constant 5.
+
+  // both of the following operations will be executed in parallel
+  f1 <- IO.fork(calculatePi)
+  f2 <- IO.fork(calculateE)
+  // join operation will wait for the completion of the forked operation
+  pi <- f1.join
+  e  <- f2.join
+
+  _ <- IO.never     // this makes our io never reach completion
 } yield ()
 ```
 
