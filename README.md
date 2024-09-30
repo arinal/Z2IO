@@ -29,11 +29,11 @@ How it is being used in [Main.scala](https://github.com/arinal/Z2IO/blob/master/
 and [unit test](https://github.com/arinal/Z2IO/blob/master/modules/z2io/src/test/scala/org/lamedh/z2io/core/IOTest.scala)
 Here's a quick overview of the key features.
 ```scala
-import scala.concurrent.Future
 import org.lamedh.z2io.core.Z2IO.IO
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
 import scala.util.Success
-import scala.concurrent.ExecutionContext.Implicits.global
 
 val io = for {
   _ <- IO.pure(5)   // Wraps an existing value into IO.
@@ -79,12 +79,13 @@ Note that the printed structure is incomplete because it should also contain `Ma
 The fact that the printed structure is incomplete is interesting because the lambda parameter inside the nested `flatMap` hasn't been evaluated yet.
 In a different context, the incomplete structure is also what makes [trampolining](https://github.com/arinal/Z2IO/blob/b57c47b9c202188d5036c85d769a21aee45ac299/src/test/scala/org/lamedh/z2io/core/Z2ioTest.scala#L24-L36) possible.
 
-Run the `io` by calling its `unsafeRunSync` method.
-
+Run the `io` by wrapping it with a fiber, then run its run method:
 ```scala
-io.unsafeRunSync()
+import org.lamedh.z2io.core.Fiber
+val fiber = Fiber(io)
+fiber.unsafeRunSync()
 ```
-Now the runloop will interpret all of the structures constructed in the previous `for` comprehension.
+Fiber owns the runloop which will interpret all of the structures constructed in the previous `for` comprehension.
 If async boundary is hit, it's blocked until the async handler is finished.
 Since `IO.never` is also incorporated, this will block the main thread forever.
 

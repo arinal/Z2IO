@@ -14,7 +14,7 @@ trait Fiber[A] {
   def unsafeRun(cb: IO.Callback[A]): Unit
 }
 
-private object Fiber {
+object Fiber {
 
   import IO._
 
