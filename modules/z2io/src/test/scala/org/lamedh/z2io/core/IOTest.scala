@@ -18,13 +18,13 @@ class IOTest extends AsyncFunSuite with Matchers {
   test("simple run sync") {
     run(IO.pure(2)) shouldBe 2
     run(IO(2)) shouldBe 2
-    run(IO.Map[Int, Int](IO.pure(2), _ + 1)) shouldBe 3
+    run(IO.Flatmap[Int, Int](IO.pure(2), n => IO.pure(n + 1))) shouldBe 3
   }
 
   test("simple run async") {
     runAsync(IO.pure(2)) shouldBe 2
     runAsync(IO(2)) shouldBe 2
-    runAsync(IO.Map[Int, Int](IO.pure(2), _ + 1)) shouldBe 3
+    runAsync(IO.Flatmap[Int, Int](IO.pure(2), n => IO.pure(n + 1))) shouldBe 3
   }
 
   test("for comprehension") {
@@ -53,7 +53,7 @@ class IOTest extends AsyncFunSuite with Matchers {
 
   test("async: callback is called") {
     var _2 = 0
-    IO.unsafeRunAsync[Int](IO(2), {
+    Fiber.unsafeRunAsync[Int](IO(2), {
       case Right(v) => _2 = v
       case _        =>
     })
@@ -62,7 +62,7 @@ class IOTest extends AsyncFunSuite with Matchers {
 
   test("async: handle error flow") {
     var _4_0 = (0, 0)
-    IO.unsafeRunAsync[(Int, Int)](handler_4_0_IO, {
+    Fiber.unsafeRunAsync[(Int, Int)](handler_4_0_IO, {
       case Right(tup) => _4_0 = tup
       case _          =>
     })
@@ -76,22 +76,22 @@ class IOTest extends AsyncFunSuite with Matchers {
       case Left(_) => left = true
       case Right(n)       => ()
     }
-    IO.unsafeRunAsync[Int](ioErr, cb)
+    Fiber.unsafeRunAsync[Int](ioErr, cb)
     left shouldBe true
   }
 
   test("from future and back to future") {
     val io = IO.fromFuture(Future.successful(5))
-    IO.unsafeToFuture(io).map(_ shouldBe 5)
+    Fiber.unsafeToFuture(io).map(_ shouldBe 5)
   }
 
-  def run[A](io: IO[A]): A = IO.unsafeRunSync(io)
-  def runAsync[A](io: IO[A]): A = Await.result(IO.unsafeToFuture(io), 1.second)
+  def run[A](io: IO[A]): A = Fiber.unsafeRunSync(io)
+  def runAsync[A](io: IO[A]): A = Await.result(Fiber.unsafeToFuture(io), 1.second)
 
   def runAsync(name: String, io: IO[Int], expected: Int) = {
       var result = 0
       val sem = new java.util.concurrent.Semaphore(0)
-      IO.unsafeRunAsync[Int](io, {
+      Fiber.unsafeRunAsync[Int](io, {
         case Right(v) =>
           result = v
           sem.release()

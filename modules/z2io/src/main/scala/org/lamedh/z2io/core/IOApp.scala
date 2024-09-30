@@ -10,14 +10,14 @@ trait IOApp {
   def run(args: Array[String]): IO[Unit]
 
   final def main(args: Array[String]) =
-    IO.unsafeRunSync(run(args))
+    Fiber.unsafeRunSync(run(args))
 }
 
 object IOApp {
 
   trait Simple {
     def run: IO[Unit]
-    final def main(args: Array[String]) = IO.unsafeRunSync(run)
+    final def main(args: Array[String]) = Fiber.unsafeRunSync(run)
   }
 
   implicit val sleepers: ScheduledExecutorService = Executors.newScheduledThreadPool(12)
