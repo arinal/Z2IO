@@ -38,7 +38,10 @@ private object Fiber {
       result match {
         case Some(Right(res)) => pure(res)
         case Some(Left(err))  => raise(err)
-        case None             => async[A] { cb => joinerCb = Some(cb) }
+        case None =>
+          async[A] { cb =>
+            joinerCb = Some(cb)
+          }
       }
 
     def unsafeRun(cb: IO.Callback[A]): Unit = {
@@ -51,7 +54,7 @@ private object Fiber {
     }
 
     def unsafeRunSync(): A = {
-      val sem = new Semaphore(0)
+      val sem                                  = new Semaphore(0)
       var result: Option[Either[Throwable, A]] = None
 
       val finishCb = { res: Either[Throwable, A] =>
@@ -62,9 +65,9 @@ private object Fiber {
       result match {
         case Some(Right(res)) => res
         case Some(Left(err))  => throw err
-        case None             =>
+        case None =>
           blocking(sem.acquire())
-          unsafeRunSync()
+          result.get.fold(throw _, identity)
       }
     }
   }
