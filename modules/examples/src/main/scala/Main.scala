@@ -56,6 +56,7 @@ object Main extends IOApp.Simple {
 
       _ <- IO(log("executing IO.never"))
       _ <- IO.never
+
     } yield ()
   }
 }

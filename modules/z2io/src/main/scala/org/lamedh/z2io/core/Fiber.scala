@@ -44,17 +44,17 @@ object Fiber {
           }
       }
 
-    def unsafeRun(cb: IO.Callback[A]): Unit = {
+    def unsafeRun(finishCb: IO.Callback[A]): Unit = {
       val newCb = { res: Either[Throwable, A] =>
         result = Some(res)
         joinerCb.foreach(_(res))
-        cb(res)
+        finishCb(res)
       }
       Runloop.loop(io, Nil, newCb)
     }
 
     def unsafeRunSync(): A = {
-      val sem                                  = new Semaphore(0)
+      val sem = new Semaphore(0)
       var result: Option[Either[Throwable, A]] = None
 
       val finishCb = { res: Either[Throwable, A] =>
