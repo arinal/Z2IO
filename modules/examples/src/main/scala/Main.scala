@@ -8,17 +8,19 @@ import scala.util.Success
 
 object Main extends IOApp.Simple {
 
-  def run: IO[Unit] =
-    general
+  def run: IO[Unit] = showCase
 
-  def general = {
+  def showCase = {
     import scala.concurrent.duration._
     import IOApp._
 
     def log(msg: String)      = println(s"$msg  On thread: ${Thread.currentThread().getName}")
     def logAsync(msg: String) = Future(log(msg))
 
-    def ticking(res: Int) = (IO(log("Tick")) *> IO.sleep(1.second)).repeat(3) *> IO.pure(res)
+    def ticking(res: Int) =
+      (IO(log("Tick")) *> IO.sleep(1.second))
+        .repeat(3) *>
+          IO.pure(res)
 
     for {
       _ <- IO.pure(5)
@@ -44,8 +46,8 @@ object Main extends IOApp.Simple {
       _ <- IO(log("Waited 1s"))
 
       f1 <- IO.fork(ticking(1))
-      f2 <- IO.fork(ticking(2))
-      f3 <- IO.fork(ticking(3))
+      f2 <- (ticking(2)).fork
+      f3 <- (ticking(3)).fork
 
       n1 <- f1.join
       n2 <- f2.join

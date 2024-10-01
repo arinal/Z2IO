@@ -349,7 +349,7 @@ def loop[A](current: IO[Any], stack: List[Bind], finishCb: Callback[A]): Unit =
    implicit val sleepers: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
    implicit val ec: ExecutionContext               = ExecutionContext.global
    ```
-     Can you spot the difference during the execution of `general`? Without changing the implicit execution context, how to fix this?
+     Can you spot the difference during the execution of `showCase`? Without changing the implicit execution context, how to fix this?
 
 5. Implement `trait Fiber` so that all of the forked computation can be joined!
    ```scala

@@ -7,7 +7,7 @@ import scala.concurrent._
 
 import java.util.concurrent.Semaphore
 
-trait Fiber[A] {
+trait Fiber[+A] {
   def join: IO[A]
 
   def unsafeRunSync(): A

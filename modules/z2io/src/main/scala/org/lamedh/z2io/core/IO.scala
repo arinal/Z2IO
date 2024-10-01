@@ -17,6 +17,8 @@ sealed trait IO[+A] {
   def repeat(n: Int): IO[A] = Repeat[A, Int](this, n, _ - 1, _ <= 1)
   def forever       : IO[A] = Repeat[A, Unit](this, (), identity, _ => false)
 
+  def fork(implicit ec: ExecutionContext): IO[Fiber[A]] = IO.fork(this)(ec)
+
   def handleErr[B](h: Throwable => B): IO[B]         = IO.handleErrWith(this, h andThen IO.pure)
   def handleErrWith[B](h: Throwable => IO[B]): IO[B] = IO.handleErrWith(this, h)
 
@@ -25,7 +27,7 @@ sealed trait IO[+A] {
 
 object IO {
 
-  type Callback[A] = Either[Throwable, A] => Unit
+  type Callback[-A] = Either[Throwable, A] => Unit
 
   final case class Flatmap[A, B](io: IO[B], f: B => IO[A]) extends IO[A]
   final case class Pure[A](a: A)                           extends IO[A]
