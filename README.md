@@ -1,10 +1,12 @@
 # Z2IO
 
-> To the inquisitive minds seeking to understand the internal mechanisms
+> To the inquisitive minds seeking to understand the internal mechanisms. See the [slides](https://hackmd.io/@9Tvcj_JcSGGwklB8pDvExA/ry4yKS1A0)
 
 An implementation of IO monad to mimic the likes of [ZIO](https://zio.dev/) and [cats-effect](https://typelevel.org/cats-effect/).
-The aim of this project is educational, the implementation is meant to be simple and easy to understand whilst also having the key features offered by complete IO monad frameworks.
-See the slide online [here](https://hackmd.io/@9Tvcj_JcSGGwklB8pDvExA/ry4yKS1A0)
+The aim of this project is educational, the implementation is meant to be simple
+and easy to understand whilst also having the key features offered by complete IO monad frameworks.
+
+> Z2IO is smaller than Cats Effect (300 vs. 30K+ lines of code), making it an ideal starting point to learn the internal.
 
 The main concepts to be discussed in this document are:
 - Scheduler
@@ -21,8 +23,7 @@ The main concepts to be discussed in this document are:
 > What's in a name?
 
 Z2IO is not ZIO2. It's also not a playful recursive acronym like GNU's "GNU is Not UNIX".
-Z2IO stands for "Zero to IO," signifying the journey of development from scratch to a fully-fledged
-(and ideally mature) IO framework.
+Z2IO stands for "Zero to IO," signifying the journey of development from scratch to a fully-fledged IO framework.
 
 ## Main functionality
 How it is being used in [Main.scala](https://github.com/arinal/Z2IO/blob/master/modules/examples/src/main/scala/Main.scala)
@@ -73,7 +74,7 @@ println(io)
 
 The above statement prints:
 ```scala
-Flatmap(Pure(5),org.lamedh.Main$$$Lambda$7426/803391093@8628866)
+Flatmap(Pure(5),org.lamedh.Main$$$Lambda$)
 ```
 Note that the printed structure is incomplete because it should also contain `Map`, `Delay`, `Async`, and `HandleError`.
 The fact that the printed structure is incomplete is interesting because the lambda parameter inside the nested `flatMap` hasn't been evaluated yet.
@@ -89,9 +90,8 @@ Fiber owns the runloop which will interpret all of the structures constructed in
 If async boundary is hit, it's blocked until the async handler is finished.
 Since `IO.never` is also incorporated, this will block the main thread forever.
 
-Other important concepts are semantic blocking and yielding. The `IO.sleep` below won't block the current thread since it internally uses `ScheduledExecutorService` and schedules the continuation.
-`IO.sleep` takes `ScheduledExecutorService` as an implicit parameter but rather than instantiating it yourself, using `IOApp` as an entry point is a clean way of providing all of the needed explicit values and also shutting down everything
-after the `run` method has finished.
+Other important concepts are semantic blocking and yielding. The `IO.sleep` below won't block the current thread since
+it internally uses `ScheduledExecutorService` to schedules the continuation.
 
 ```scala
 object Main extends IOApp {
@@ -101,7 +101,7 @@ object Main extends IOApp {
   def run(args: Array[String]): IO[Unit] =
     for {
       _ <- log("Hello") *> IO.shift *> log("world")
-      _ <- log("Wait 1 second") *> IO.sleep(1.second) *> log("Thanks for waiting!") //
+      _ <- log("Wait 1 second") *> IO.sleep(1.second) *> log("Thanks for waiting!")
     } yield ()
 }
 ```
